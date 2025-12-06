@@ -1,6 +1,7 @@
 package com.example.neirotech
 
 import android.os.Bundle
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,14 +23,18 @@ class SettingsFragment : Fragment() {
         val radioNeon = view.findViewById<RadioButton>(R.id.radioNeon)
         val radioOcean = view.findViewById<RadioButton>(R.id.radioOcean)
         val radioSunset = view.findViewById<RadioButton>(R.id.radioSunset)
+        val fakeSwitch = view.findViewById<Switch>(R.id.switchFakeMetricsGlobal)
 
         val ctx = requireContext()
+        val prefs = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
         nightSwitch.isChecked = ThemeManager.isNight(ctx)
         when (ThemeManager.currentPalette(ctx)) {
             "sunset" -> radioSunset.isChecked = true
             "neon" -> radioNeon.isChecked = true
             else -> radioOcean.isChecked = true
         }
+        fakeSwitch.isChecked = prefs.getBoolean(SessionSetupActivity.PREF_FAKE_METRICS, false)
 
         nightSwitch.setOnCheckedChangeListener { _, checked ->
             ThemeManager.setNightMode(ctx, checked)
@@ -44,6 +49,10 @@ class SettingsFragment : Fragment() {
             }
             ThemeManager.setPalette(ctx, palette)
             requireActivity().recreate()
+        }
+
+        fakeSwitch.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(SessionSetupActivity.PREF_FAKE_METRICS, checked).apply()
         }
 
         return view

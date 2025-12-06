@@ -97,6 +97,13 @@
                 android:layout_height="wrap_content"
                 android:text="Экспорт по Wi‑Fi"
                 android:textColor="@color/gray_inactive" />
+
+            <Switch
+                android:id="@+id/switchFakeMetricsGlobal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Имитация фейковых метрик (для сессий без устройства)"
+                android:textColor="@color/gray_inactive" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

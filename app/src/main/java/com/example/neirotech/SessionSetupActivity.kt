@@ -3,6 +3,7 @@ package com.example.neirotech
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -64,11 +65,13 @@ class SessionSetupActivity : AppCompatActivity() {
         val sessionName = findViewById<EditText>(R.id.inputSessionName)
         val startButton = findViewById<Button>(R.id.btnStartRecording)
         val autoSave = findViewById<Switch>(R.id.switchAutosave)
-        val fakeMetrics = findViewById<Switch>(R.id.switchFakeMetrics)
         val checkScenes = findViewById<CheckBox>(R.id.checkScenes)
         val checkMusic = findViewById<CheckBox>(R.id.checkMusic)
         val checkText = findViewById<CheckBox>(R.id.checkText)
         val checkTransitions = findViewById<CheckBox>(R.id.checkTransitions)
+
+        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val fakeMetricsEnabled = prefs.getBoolean(PREF_FAKE_METRICS, false)
 
         fun updatePreview() {
             val labelUi = when (selectedSource) {
@@ -140,8 +143,8 @@ class SessionSetupActivity : AppCompatActivity() {
                 if (checkTransitions.isChecked) add("Переходы")
             }
 
-            if (!fakeMetrics.isChecked && !ConnectionManager.isConnected()) {
-                Toast.makeText(this, "Подключите BrainBit или включите фейковые метрики", Toast.LENGTH_LONG).show()
+            if (!fakeMetricsEnabled && !ConnectionManager.isConnected()) {
+                Toast.makeText(this, "Подключите BrainBit или включите фейковые метрики в настройках", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
 
@@ -152,7 +155,7 @@ class SessionSetupActivity : AppCompatActivity() {
                 putExtra(EXTRA_YOUTUBE, youtubeLink)
                 putStringArrayListExtra(EXTRA_TAGS, tags)
                 putExtra(EXTRA_AUTOSAVE, autoSave.isChecked)
-                putExtra(EXTRA_FAKE_METRICS, fakeMetrics.isChecked)
+                putExtra(EXTRA_FAKE_METRICS, fakeMetricsEnabled)
                 // пробрасываем выбранное устройство в мониторинг, если есть в текущем intent
                 putExtra(EXTRA_DEVICE_NAME, this@SessionSetupActivity.intent.getStringExtra(EXTRA_DEVICE_NAME))
                 putExtra(EXTRA_DEVICE_ADDRESS, this@SessionSetupActivity.intent.getStringExtra(EXTRA_DEVICE_ADDRESS))
@@ -251,6 +254,7 @@ class SessionSetupActivity : AppCompatActivity() {
         const val EXTRA_DEVICE_NAME = "session_device_name"
         const val EXTRA_DEVICE_ADDRESS = "session_device_address"
         const val EXTRA_FAKE_METRICS = "session_fake_metrics"
+        const val PREF_FAKE_METRICS = "pref_fake_metrics"
     }
 }
 
