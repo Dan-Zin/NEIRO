@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp"
+    android:background="@color/gray_light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Настройка сессии"
+            android:textColor="@color/black"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Шаг 1: Выберите видео"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card">
+
+            <Button
+                android:id="@+id/btnLocalVideo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📁 Локальное видео"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btnYoutube"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📺 YouTube (ссылка)"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btnCamera"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🎥 Снять сейчас"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btnWifiUpload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📄 Загрузить с компьютера"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/videoPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Предпросмотр: не выбрано"
+            android:textColor="@color/gray_inactive" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Шаг 2: Настройки сессии"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/inputSessionName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:hint="Название сессии"
+            android:padding="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Метки для отслеживания"
+            android:textColor="@color/black"
+            android:textStyle="bold" />
+
+        <CheckBox
+            android:id="@+id/checkScenes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Сцены"
+            android:checked="true" />
+        <CheckBox
+            android:id="@+id/checkMusic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Музыка"
+            android:checked="true" />
+        <CheckBox
+            android:id="@+id/checkText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Текст/титры" />
+        <CheckBox
+            android:id="@+id/checkTransitions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Переходы" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Автосохранение"
+                android:textColor="@color/black" />
+
+            <Switch
+                android:id="@+id/switchAutosave"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Имитация фейковых метрик"
+                android:textColor="@color/black" />
+
+            <Switch
+                android:id="@+id/switchFakeMetrics"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnStartRecording"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Начать запись"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</ScrollView>
+

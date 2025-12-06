@@ -1,0 +1,47 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.NeiroTech" parent="Theme.Material3.DayNight.NoActionBar">
+    </style>
+
+    <!-- Default: light Ocean -->
+    <style name="Theme.NeiroTech" parent="Theme.NeiroTech.Ocean" />
+
+    <style name="Theme.NeiroTech.Ocean" parent="Base.Theme.NeiroTech">
+        <item name="colorPrimary">@color/ocean_primary</item>
+        <item name="colorOnPrimary">@color/ocean_on_primary</item>
+        <item name="colorPrimaryVariant">@color/ocean_primary_variant</item>
+        <item name="colorSecondary">@color/ocean_secondary</item>
+        <item name="colorOnSecondary">@color/ocean_on_primary</item>
+        <item name="colorSurface">@color/ocean_surface</item>
+        <item name="colorOnSurface">@color/ocean_on_surface</item>
+        <item name="colorOnBackground">@color/ocean_on_surface</item>
+        <item name="android:windowBackground">@color/ocean_surface</item>
+        <item name="android:colorBackground">@color/ocean_surface</item>
+    </style>
+
+    <style name="Theme.NeiroTech.Sunset" parent="Base.Theme.NeiroTech">
+        <item name="colorPrimary">@color/sunset_primary</item>
+        <item name="colorOnPrimary">@color/sunset_on_primary</item>
+        <item name="colorPrimaryVariant">@color/sunset_primary_variant</item>
+        <item name="colorSecondary">@color/sunset_secondary</item>
+        <item name="colorOnSecondary">@color/sunset_on_primary</item>
+        <item name="colorSurface">@color/sunset_surface</item>
+        <item name="colorOnSurface">@color/sunset_on_surface</item>
+        <item name="colorOnBackground">@color/sunset_on_surface</item>
+        <item name="android:windowBackground">@color/sunset_surface</item>
+        <item name="android:colorBackground">@color/sunset_surface</item>
+    </style>
+
+    <style name="Theme.NeiroTech.Neon" parent="Base.Theme.NeiroTech">
+        <item name="colorPrimary">@color/neon_primary</item>
+        <item name="colorOnPrimary">@color/neon_on_primary</item>
+        <item name="colorPrimaryVariant">@color/neon_primary_variant</item>
+        <item name="colorSecondary">@color/neon_secondary</item>
+        <item name="colorOnSecondary">@color/neon_on_primary</item>
+        <item name="colorSurface">@color/neon_surface</item>
+        <item name="colorOnSurface">@color/neon_on_surface</item>
+        <item name="colorOnBackground">@color/neon_on_surface</item>
+        <item name="android:windowBackground">@color/neon_surface</item>
+        <item name="android:colorBackground">@color/neon_surface</item>
+    </style>
+</resources>

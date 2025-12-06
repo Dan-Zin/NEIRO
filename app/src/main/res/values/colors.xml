@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common neutrals -->
+    <color name="black">#111111</color>
+    <color name="white">#FFFFFF</color>
+    <color name="gray_inactive">#7A7A7A</color>
+    <color name="card_stroke">#E1E4EA</color>
+
+    <!-- Neon (dark) -->
+    <color name="neon_primary">#00E6FF</color>
+    <color name="neon_primary_variant">#00B8D4</color>
+    <color name="neon_secondary">#14F1FF</color>
+    <color name="neon_on_primary">#E6F7FF</color>
+    <color name="neon_surface">#0E172A</color>
+    <color name="neon_on_surface">#E6F7FF</color>
+
+    <!-- Ocean (light) -->
+    <color name="ocean_primary">#00A7E1</color>
+    <color name="ocean_primary_variant">#007EA7</color>
+    <color name="ocean_secondary">#14C3FF</color>
+    <color name="ocean_on_primary">#FFFFFF</color>
+    <color name="ocean_surface">#F5FBFF</color>
+    <color name="ocean_on_surface">#0A1B2E</color>
+
+    <!-- Sunset (light, warm) -->
+    <color name="sunset_primary">#FF7A59</color>
+    <color name="sunset_primary_variant">#E64E38</color>
+    <color name="sunset_secondary">#FFB347</color>
+    <color name="sunset_on_primary">#FFFFFF</color>
+    <color name="sunset_surface">#FFF7F0</color>
+    <color name="sunset_on_surface">#2A1A10</color>
+
+    <!-- For legacy usages -->
+    <color name="purple_500">#00E6FF</color>
+    <color name="purple_700">#00B8D4</color>
+    <color name="teal_200">#14F1FF</color>
+    <color name="gray_light">#F5FBFF</color>
+</resources>
