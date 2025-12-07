@@ -143,39 +143,21 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/btnAddMark"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Добавить метку"
-                    android:textAllCaps="false" />
-
-                <Button
-                    android:id="@+id/btnSnapshot"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:text="Снимок"
-                    android:textAllCaps="false" />
-
-                <Button
                     android:id="@+id/btnStatistics"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="6dp"
                     android:text="Статистика"
                     android:textAllCaps="false" />
 
-            <Button
-                android:id="@+id/btnCalibrate"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:text="Калибровка"
-                android:textAllCaps="false" />
+                <Button
+                    android:id="@+id/btnCalibrate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="Калибровка"
+                    android:textAllCaps="false" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

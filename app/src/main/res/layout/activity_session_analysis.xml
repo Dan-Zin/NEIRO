@@ -11,6 +11,7 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/analysisTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Анализ сессии"
@@ -19,9 +20,10 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/analysisSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Название сессии • 12 марта 2024"
+            android:text="Название сессии • —"
             android:textColor="@color/gray_inactive"
             android:layout_marginTop="4dp" />
 
@@ -30,12 +32,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:background="@drawable/bg_card"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="12dp">
 
             <TextView
+                android:id="@+id/textOverall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Общий показатель вовлеченности: 78% (хорошо)"
+                android:text="Общий показатель вовлеченности: —"
                 android:textColor="@color/black"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -49,11 +53,11 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/textTimeline"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="[██████░░░░░░░░██████████]"
-                android:textColor="@color/black"
-                android:textStyle="bold" />
+                android:text="[нет данных]"
+                android:textColor="@color/gray_inactive" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -64,9 +68,10 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/textPeaks"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1) 02:15 - 02:45 (сцена с действием) - 94%\n2) 04:30 - 05:00 (музыкальный момент) - 89%\n3) 01:00 - 01:30 (диалог) - 87%"
+                android:text="—"
                 android:textColor="@color/gray_inactive" />
 
             <TextView
@@ -78,9 +83,10 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/textDrops"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="• 03:10 - 03:40 (статичный кадр) - 45%"
+                android:text="—"
                 android:textColor="@color/gray_inactive" />
         </LinearLayout>
 

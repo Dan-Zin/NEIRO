@@ -65,11 +65,6 @@ class SessionSetupActivity : AppCompatActivity() {
         val sessionName = findViewById<EditText>(R.id.inputSessionName)
         val startButton = findViewById<Button>(R.id.btnStartRecording)
         val autoSave = findViewById<Switch>(R.id.switchAutosave)
-        val checkScenes = findViewById<CheckBox>(R.id.checkScenes)
-        val checkMusic = findViewById<CheckBox>(R.id.checkMusic)
-        val checkText = findViewById<CheckBox>(R.id.checkText)
-        val checkTransitions = findViewById<CheckBox>(R.id.checkTransitions)
-
         val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val fakeMetricsEnabled = prefs.getBoolean(PREF_FAKE_METRICS, false)
 
@@ -136,13 +131,6 @@ class SessionSetupActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val tags = arrayListOf<String>().apply {
-                if (checkScenes.isChecked) add("Сцены")
-                if (checkMusic.isChecked) add("Музыка")
-                if (checkText.isChecked) add("Текст/титры")
-                if (checkTransitions.isChecked) add("Переходы")
-            }
-
             if (!fakeMetricsEnabled && !ConnectionManager.isConnected()) {
                 Toast.makeText(this, "Подключите BrainBit или включите фейковые метрики в настройках", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
@@ -153,7 +141,7 @@ class SessionSetupActivity : AppCompatActivity() {
                 putExtra(EXTRA_SOURCE, source)
                 putExtra(EXTRA_URI, selectedUri?.toString())
                 putExtra(EXTRA_YOUTUBE, youtubeLink)
-                putStringArrayListExtra(EXTRA_TAGS, tags)
+                putStringArrayListExtra(EXTRA_TAGS, arrayListOf())
                 putExtra(EXTRA_AUTOSAVE, autoSave.isChecked)
                 putExtra(EXTRA_FAKE_METRICS, fakeMetricsEnabled)
                 // пробрасываем выбранное устройство в мониторинг, если есть в текущем intent

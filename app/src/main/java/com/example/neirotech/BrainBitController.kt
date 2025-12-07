@@ -73,6 +73,7 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
         if (emotionalMath == null) return
 
         try {
+            // SDK использует "Callibration" с двойной 'l'
             emotionalMath?.startCalibration()
             calibrationStarted = true
             calibrationComplete = false
@@ -246,10 +247,28 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
             }
 
             sensor.execCommand(SensorCommand.StartSignal)
+            
+            // Автоматический запуск калибровки (как в Python: math.start_calibration())
+            // SDK использует "Callibration" с двойной 'l'
+            val math = emotionalMath
+            if (math != null) {
+                try {
+                    math.startCalibration()
+                    calibrationStarted = true
+                    calibrationComplete = false
+                    Log.d(TAG, "✅ Calibration started automatically")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to start calibration: ${e.message}", e)
+                }
+            } else {
+                Log.e(TAG, "❌ EmotionalMath is null, cannot start calibration!")
+            }
+            
             startPeriodicResistanceCheck()
 
             activity.runOnUiThread {
-                activity.findViewById<TextView>(R.id.signalQuality)?.text = "Подключено • получаю данные..."
+                activity.findViewById<TextView>(R.id.signalQuality)?.text = "Подключено • калибровка..."
+                activity.findViewById<TextView>(R.id.engagementLevel)?.text = "🔄 Калибровка: 0%"
             }
 
         } catch (e: Exception) {
@@ -300,18 +319,27 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
             Log.e(TAG, "Error processing BrainBit data: ${e.message}", e)
         }
 
-        // Отображаем каналы в Вольтах (сырые значения из SDK)
+// Получаем значения каналов (в микровольтах от SDK2)
         val volts = listOf(last.o1, last.o2, last.t3, last.t4)
+
+// Конвертируем микровольты в вольты для отображения
+        val voltsDisplay = volts.map { it / 1_000_000.0 } // мкВ -> В
+
+// Находим пик среди исходных значений (в микровольтах)
         val peak = volts.maxOrNull() ?: 0.0
+        val peakVolts = peak / 1_000_000.0 // Конвертируем пик в вольты
+
         val names = listOf("O1", "O2", "T3", "T4")
-        val chText = volts.mapIndexed { idx, v -> "${names[idx]}: ${"%.6f".format(v)} V" }
-            .joinToString(" • ")
+        val chText = voltsDisplay.mapIndexed { idx, v ->
+            "${names[idx]}: ${"%.6f".format(v)} V"
+        }.joinToString(" • ")
+
         activity.runOnUiThread {
             activity.findViewById<TextView>(R.id.channelMetrics)?.text = "Каналы: $chText"
             activity.findViewById<TextView>(R.id.signalQuality)?.text =
                 "Пакет ${last.packNum} • 4 канала • #$dataPacketsReceived"
             activity.findViewById<TextView>(R.id.peaksInfo)?.text =
-                "Пики: ${"%.6f".format(peak)} V"
+                "Пики: ${"%.6f".format(peakVolts)} V"
         }
     }
 
@@ -381,6 +409,11 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
             val isArtifacted = math.isBothSidesArtifacted() || math.isArtifactedSequence()
             val calib = math.callibrationPercents
 
+            // Логируем прогресс калибровки
+            if (calib in 1..99) {
+                Log.d(TAG, "🔄 Calibration progress: $calib%")
+            }
+
             val isCalibFinished = try {
                 math.calibrationFinished()
             } catch (e: Exception) {
@@ -401,10 +434,16 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
             val betaPercent = (spectral.second * 100.0).coerceIn(0.0, 100.0)
             val thetaPercent = (spectral.third * 100.0).coerceIn(0.0, 100.0)
 
-            val attention = (lastMind?.relAttention ?: 0.0).coerceIn(0.0, 1.0)
-            val relaxation = (lastMind?.relRelaxation ?: 0.0).coerceIn(0.0, 1.0)
-            val engagementPercent = attention * 100.0
-            val relaxationPercent = relaxation * 100.0
+            // Читаем относительные значения внимания и релаксации (как в Python: rel_attention, rel_relaxation)
+            val relAttention = (lastMind?.relAttention ?: 0.0).coerceIn(0.0, 100.0)
+            val relRelaxation = (lastMind?.relRelaxation ?: 0.0).coerceIn(0.0, 100.0)
+            
+            // Также читаем мгновенные значения (inst_attention, inst_relaxation)
+            val instAttention = (lastMind?.instAttention ?: 0.0).coerceIn(0.0, 100.0)
+            val instRelaxation = (lastMind?.instRelaxation ?: 0.0).coerceIn(0.0, 100.0)
+            
+            Log.d(TAG, "Mental: relAtt=${"%.1f".format(relAttention)} relRel=${"%.1f".format(relRelaxation)} " +
+                      "instAtt=${"%.1f".format(instAttention)} instRel=${"%.1f".format(instRelaxation)}")
 
             activity.runOnUiThread {
                 if (isArtifacted) {
@@ -413,17 +452,18 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
                     activity.findViewById<TextView>(R.id.artifactsInfo)?.text = "✓ Сигнал чистый"
                 }
 
-                // Показываем числовые значения без «прогресс-баров»
+                // Показываем Альфа/Бета как в Python
                 activity.findViewById<TextView>(R.id.waveText)?.text =
                     "Альфа: ${"%.1f".format(alphaPercent)}%\n" +
                     "Бета: ${"%.1f".format(betaPercent)}%\n" +
-                    "Индекс: ${"%.1f".format(thetaPercent)}%"
+                    "Тета: ${"%.1f".format(thetaPercent)}%"
 
                 if (calib in 1..99) {
                     activity.findViewById<TextView>(R.id.engagementLevel)?.text = "🔄 Калибровка: $calib%"
                 } else if (calibrationComplete) {
+                    // Показываем и внимание и релаксацию как в Python
                     activity.findViewById<TextView>(R.id.engagementLevel)?.text =
-                        "Внимание: ${"%.1f".format(engagementPercent)}%"
+                        "Внимание: ${"%.1f".format(relAttention)}% • Релаксация: ${"%.1f".format(relRelaxation)}%"
                 } else {
                     activity.findViewById<TextView>(R.id.engagementLevel)?.text = "⏳ Ожидание калибровки..."
                 }
@@ -482,25 +522,39 @@ class BrainBitController(private val activity: LiveMonitoringActivity) {
 
     private fun initMath() {
         try {
+            // Настройки приведены к значениям из официальной документации BrainBit SDK (Emotions)
             val sf = 250 // Sampling frequency for BrainBit
             val mls = MathLibSetting(
-                sf, 25, 1_000, 4, true, 4, 0
+                sf,     // sampling_rate
+                25,     // process_win_freq
+                1_000,  // fft_window
+                4,      // n_first_sec_skipped
+                true,   // bipolar_mode
+                4,      // channels_number
+                0       // channel_for_analysis
             )
+            // ArtifactDetectSetting (doc, Kotlin sample):
+            // art_bord=110, allowed_percent_artpoints=70, raw_betap_limit=800_000,
+            // total_pow_border=40*1e7, global_artwin_sec=4,
+            // spect_art_by_totalp=true, hanning_win_spectrum=true, hamming_win_spectrum=false,
+            // num_wins_for_quality_avg=125
             val ads = ArtifactDetectSetting(
-                110,
-                70,
-                800_000,
-                (40 * 1e7).toInt(),
-                4,
-                true,
-                false,
-                true,
-                125
+                110,        // art_bord
+                70,         // allowed_percent_artpoints
+                800_000,    // raw_betap_limit
+                (40 * 1e7).toInt(), // total_pow_border
+                4,          // global_artwin_sec
+                true,       // spect_art_by_totalp
+                true,       // hanning_win_spectrum
+                false,      // hamming_win_spectrum
+                125        // num_wins_for_quality_avg
             )
             val sads = ShortArtifactDetectSetting(200, 200, 25)
+            // MentalAndSpectralSetting из Python:
+            // n_sec_for_averaging=2, n_sec_for_instant_estimation=4
             val mss = MentalAndSpectralSetting(
-                4,
-                2
+                2,  // n_sec_for_averaging (было перепутано!)
+                4   // n_sec_for_instant_estimation
             )
 
             emotionalMath = EmotionalMath(mls, ads, sads, mss)

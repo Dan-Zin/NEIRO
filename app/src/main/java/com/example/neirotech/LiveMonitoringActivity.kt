@@ -10,6 +10,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.neirotech.SessionStorage
+import com.example.neirotech.SessionRecord
+import com.example.neirotech.SessionEvent
+import com.example.neirotech.SessionEventType
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.PlayerView
@@ -82,13 +86,39 @@ class LiveMonitoringActivity : AppCompatActivity() {
     
     // Сглаживание значений (Exponential Moving Average)
     // Коэффициент: 0.1 = очень плавно, 0.3 = умеренно, 0.5 = быстро реагирует
-    private val SMOOTHING_FACTOR = 0.15  // Чем меньше - тем плавнее
-    private var smoothedAlpha = 0.0
-    private var smoothedBeta = 0.0
-    private var smoothedTheta = 0.0
+    private val SMOOTHING_FACTOR = 0.18  // ближе к исходному плавному поведению
+    private val RELAXATION_GAIN = 0.6   // слегка ослабляем релаксацию
+    private var smoothedAlpha = 0.15
+    private var smoothedBeta = 0.15
+    private var smoothedTheta = 0.15
     private var smoothedAttention = 0.0
     private var smoothedRelaxation = 0.0
     private var isFirstReading = true
+    private var deviceOnHead = true  // отслеживаем состояние подключения/надевания
+    
+    // Текущая сессия для меток/снимков/статистики
+    private val currentSessionId: String by lazy {
+        intent.getStringExtra("session_id") ?: java.util.UUID.randomUUID().toString()
+    }
+    private var currentSessionName: String? = null
+    private var currentSessionSource: String? = null
+    private var currentSessionTags: List<String> = emptyList()
+    private var currentSessionAutoSave: Boolean = false
+    private var currentSessionFake: Boolean = false
+    private var currentSessionUri: String? = null
+    private var currentSessionYoutube: String? = null
+    private var currentDeviceName: String? = null
+    private var currentDeviceAddress: String? = null
+    // Статистика по сессии
+    private var statSamples = 0
+    private var statSumAttention = 0.0
+    private var statSumRelaxation = 0.0
+    private var statMaxAttention = 0.0
+    private var statMaxRelaxation = 0.0
+    private var statMaxAttentionTs: Long? = null
+    private var statMaxRelaxationTs: Long? = null
+    private var statMinAttention = Double.MAX_VALUE
+    private var statMinAttentionTs: Long? = null
     
     // Контроль частоты обновления UI (троттлинг)
     private val UI_UPDATE_INTERVAL_MS = 1000L  // Обновлять UI раз в секунду
@@ -108,6 +138,15 @@ class LiveMonitoringActivity : AppCompatActivity() {
 
         val source = intent.getStringExtra(SessionSetupActivity.EXTRA_SOURCE) ?: "n/a"
         fakeMetrics = intent.getBooleanExtra(SessionSetupActivity.EXTRA_FAKE_METRICS, false)
+        currentSessionName = intent.getStringExtra(SessionSetupActivity.EXTRA_NAME)
+        currentSessionSource = source
+        currentSessionTags = intent.getStringArrayListExtra(SessionSetupActivity.EXTRA_TAGS) ?: emptyList()
+        currentSessionAutoSave = intent.getBooleanExtra(SessionSetupActivity.EXTRA_AUTOSAVE, false)
+        currentSessionFake = fakeMetrics
+        currentSessionUri = intent.getStringExtra(SessionSetupActivity.EXTRA_URI)
+        currentSessionYoutube = intent.getStringExtra(SessionSetupActivity.EXTRA_YOUTUBE)
+        currentDeviceName = intent.getStringExtra(SessionSetupActivity.EXTRA_DEVICE_NAME)
+        currentDeviceAddress = intent.getStringExtra(SessionSetupActivity.EXTRA_DEVICE_ADDRESS)
 
         // Выбор layout в зависимости от источника
         if (source == "debug") {
@@ -130,18 +169,13 @@ class LiveMonitoringActivity : AppCompatActivity() {
         initViews()
         setupUi(source)
 
+        ensureSessionCreated()
+
         if (fakeMetrics) {
             startFakeMetricsGeneration()
         } else {
             startBrainBitMonitoring()
         }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        releasePlayer()
-        stopBrainBitMonitoring()
-        stopFakeMetrics()
     }
 
     // region Initialization
@@ -194,16 +228,6 @@ class LiveMonitoringActivity : AppCompatActivity() {
         // Pause button
         findViewById<ImageButton?>(R.id.btnPause)?.setOnClickListener {
             togglePlayback()
-        }
-
-        // Add mark button
-        findViewById<Button?>(R.id.btnAddMark)?.setOnClickListener {
-            addSessionMark()
-        }
-
-        // Snapshot button  
-        findViewById<Button?>(R.id.btnSnapshot)?.setOnClickListener {
-            saveSnapshot()
         }
 
         // Statistics button
@@ -266,6 +290,8 @@ class LiveMonitoringActivity : AppCompatActivity() {
         }
     }
 
+
+   
     private fun releasePlayer() {
         player?.release()
         player = null
@@ -440,6 +466,7 @@ class LiveMonitoringActivity : AppCompatActivity() {
             // Подписка на изменение состояния подключения
             sensor.sensorStateChanged = Sensor.SensorStateChanged { state ->
                 Log.d(TAG, "Sensor state changed: $state")
+                deviceOnHead = state == SensorState.StateInRange
                 if (state == SensorState.StateOutOfRange) {
                     runOnUiThread {
                         signalQualityView?.text = "Устройство отключено"
@@ -455,12 +482,28 @@ class LiveMonitoringActivity : AppCompatActivity() {
             // Запуск получения сигнала
             sensor.execCommand(SensorCommand.StartSignal)
             Log.d(TAG, "Signal streaming started")
+            
+            // Автоматический запуск калибровки (как в Python: math.start_calibration())
+            // SDK использует "Callibration" с двойной 'l'
+            val math = emotionalMath
+            if (math != null) {
+                try {
+                    math.startCalibration()
+                    calibrationComplete = false
+                    Log.d(TAG, "✅ Calibration started automatically")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to start calibration: ${e.message}", e)
+                }
+            } else {
+                Log.e(TAG, "❌ EmotionalMath is null, cannot start calibration!")
+            }
 
             // Запуск периодической проверки сопротивления
             startPeriodicResistanceCheck()
 
             runOnUiThread {
-                signalQualityView?.text = "Подключено • получаю данные..."
+                signalQualityView?.text = "Подключено • калибровка..."
+                engagementLevelView?.text = "🔄 Калибровка: 0%"
             }
 
         } catch (e: Exception) {
@@ -478,6 +521,11 @@ class LiveMonitoringActivity : AppCompatActivity() {
     private fun handleSignalData(data: Array<BrainBitSignalData>) {
         dataPacketsCount++
         val lastSample = data.lastOrNull() ?: return
+
+        // Если устройство не на голове / нет соединения — игнорируем данные
+        if (!deviceOnHead) {
+            return
+        }
 
         try {
             // Вычисление биполярных каналов для MathLib
@@ -686,29 +734,38 @@ class LiveMonitoringActivity : AppCompatActivity() {
 
     /**
      * Инициализация библиотеки анализа EEG.
+     * Настройки приведены к значениям из официальной документации BrainBit SDK (Emotions).
      */
     private fun initEmotionalMath() {
         try {
+            // MathLibSetting (doc):
+            // sampling_rate=250, process_win_freq=25, n_first_sec_skipped=4,
+            // fft_window=1000, bipolar_mode=True, channels_number=4, channel_for_analysis=0
             val mathLibSettings = MathLibSetting(
-                SAMPLING_FREQUENCY,  // samplingFrequency
-                25,                  // processWindowSize
-                1_000,               // fftWindowSize
-                4,                   // nFirstSecSkipped
-                true,                // bipolarMode
-                4,                   // channelsNumber
-                0                    // reserved
+                SAMPLING_FREQUENCY,  // sampling_rate = 250
+                25,                  // process_win_freq
+                1_000,               // fft_window
+                4,                   // n_first_sec_skipped
+                true,                // bipolar_mode
+                4,                   // channels_number
+                0                    // channel_for_analysis
             )
 
+            // ArtifactDetectSetting (doc, Kotlin sample):
+            // art_bord=110, allowed_percent_artpoints=70, raw_betap_limit=800_000,
+            // total_pow_border=40*1e7, global_artwin_sec=4,
+            // spect_art_by_totalp=true, hanning_win_spectrum=true, hamming_win_spectrum=false,
+            // num_wins_for_quality_avg=125
             val artifactSettings = ArtifactDetectSetting(
-                110,                 // ampl_art
-                70,                  // susp_delta_art
-                800_000,             // step_art
-                (40 * 1e7).toInt(),  // art_ext_val
-                4,                   // susp_ext_cnt
-                true,                // hanning
-                false,               // hamming
-                true,                // blackman
-                125                  // reserved
+                110,        // art_bord
+                70,         // allowed_percent_artpoints
+                800_000,    // raw_betap_limit
+                (40 * 1e7).toInt(), // total_pow_border
+                4,          // global_artwin_sec
+                true,       // spect_art_by_totalp
+                true,       // hanning_win_spectrum
+                false,      // hamming_win_spectrum
+                125        // num_wins_for_quality_avg
             )
 
             val shortArtifactSettings = ShortArtifactDetectSetting(
@@ -717,9 +774,12 @@ class LiveMonitoringActivity : AppCompatActivity() {
                 25                   // shortArtPeriod
             )
 
+            // MentalAndSpectralSetting из Python:
+            // n_sec_for_averaging=2, n_sec_for_instant_estimation=4
+            // ВАЖНО: порядок параметров был перепутан!
             val mentalSettings = MentalAndSpectralSetting(
-                4,                   // nSecForInstantEstimation
-                2                    // nSecForAveraging
+                2,                   // n_sec_for_averaging (было 4)
+                4                    // n_sec_for_instant_estimation (было 2)
             )
 
             emotionalMath = EmotionalMath(
@@ -746,13 +806,29 @@ class LiveMonitoringActivity : AppCompatActivity() {
 
     /**
      * Обработка результатов анализа EEG.
+     * Использует те же алгоритмы что и Python проект video_emotion_detector.
      */
     private fun processAnalysisResults() {
         val math = emotionalMath ?: return
 
+        // Если устройство снято — обнуляем отображение
+        if (!deviceOnHead) {
+            runOnUiThread {
+                artifactsInfoView?.text = "Устройство не надето на голову"
+                waveTextView?.text = "Альфа: 0.0%\nБета: 0.0%\nТета: 0.0%"
+                engagementLevelView?.text = "⏳ Ожидание калибровки..."
+            }
+            return
+        }
+
         try {
             val isArtifacted = math.isBothSidesArtifacted() || math.isArtifactedSequence()
             val calibrationPercent = math.callibrationPercents
+
+            // Логируем прогресс калибровки
+            if (calibrationPercent in 1..99) {
+                Log.d(TAG, "🔄 Calibration progress: $calibrationPercent%")
+            }
 
             val isCalibrationFinished = try {
                 math.calibrationFinished()
@@ -765,20 +841,60 @@ class LiveMonitoringActivity : AppCompatActivity() {
                 Log.d(TAG, "✅ Calibration completed!")
             }
 
-            // Чтение ментальных данных
+            // Чтение ментальных данных (как в Python: mental_data[0].rel_relaxation, rel_attention)
             val mentalData = math.readMentalDataArr()
             val lastMental = mentalData.lastOrNull()
 
             // Чтение спектральных данных
             val spectralData = readSpectralData(math)
             
-            // Применяем сглаживание (Exponential Moving Average)
-            // Сглаживание происходит при каждом получении данных для накопления
+            // Читаем относительные и мгновенные значения; если библиотека вернула 0-1, масштабируем до %
+            fun scalePercent(v: Double): Double = when {
+                v <= 1.0 -> v * 100.0
+                else -> v
+            }.coerceIn(0.0, 100.0)
+
             val rawAlpha = spectralData.alpha
             val rawBeta = spectralData.beta
             val rawTheta = spectralData.theta
-            val rawAttention = lastMental?.relAttention ?: 0.0
-            val rawRelaxation = lastMental?.relRelaxation ?: 0.0
+
+            val relAttention = scalePercent(lastMental?.relAttention ?: 0.0)
+            val relRelaxation = scalePercent(lastMental?.relRelaxation ?: 0.0)
+            val instAttention = scalePercent(lastMental?.instAttention ?: 0.0)
+            val instRelaxation = scalePercent(lastMental?.instRelaxation ?: 0.0)
+
+            // Берём более «сильный» сигнал: максимум между относительным и мгновенным
+            // Берём максимум между относительными и мгновенными (как защиту от нулевых rel_ при живых inst_)
+            val rawAttention = maxOf(relAttention, instAttention)
+            // Ослабляем релаксацию, чтобы не “залипала” высоко
+            val rawRelaxation = maxOf(relRelaxation, instRelaxation) * RELAXATION_GAIN
+
+            // Накопление статистики по сессии
+            statSamples += 1
+            statSumAttention += rawAttention
+            statSumRelaxation += rawRelaxation
+            val nowTs = System.currentTimeMillis()
+            if (rawAttention > statMaxAttention) {
+                statMaxAttention = rawAttention
+                statMaxAttentionTs = nowTs
+            }
+            if (rawRelaxation > statMaxRelaxation) {
+                statMaxRelaxation = rawRelaxation
+                statMaxRelaxationTs = nowTs
+            }
+            if (rawAttention < statMinAttention) {
+                statMinAttention = rawAttention
+                statMinAttentionTs = nowTs
+            }
+            
+            // Логируем для отладки (как в Python)
+            if (lastMental != null) {
+                Log.d(
+                    TAG,
+                    "Mental: relAtt=${"%.1f".format(relAttention)} relRel=${"%.1f".format(relRelaxation)} " +
+                        "instAtt=${"%.1f".format(instAttention)} instRel=${"%.1f".format(instRelaxation)}"
+                )
+            }
             
             if (isFirstReading) {
                 // Первое чтение - инициализируем сглаженные значения
@@ -941,12 +1057,24 @@ class LiveMonitoringActivity : AppCompatActivity() {
         beta: Double,
         theta: Double
     ) {
+        // Спектральные данные уже в долях 0-1, переводим в проценты
         val alphaPercent = (alpha * 100.0).coerceIn(0.0, 100.0)
         val betaPercent = (beta * 100.0).coerceIn(0.0, 100.0)
         val thetaPercent = (theta * 100.0).coerceIn(0.0, 100.0)
-        val attentionPercent = (attention.coerceIn(0.0, 1.0) * 100.0)
+        
+        // Attention и Relaxation из relAttention/relRelaxation уже в процентах 0-100
+        val attentionPercent = attention.coerceIn(0.0, 100.0)
+        val relaxationPercent = relaxation.coerceIn(0.0, 100.0)
 
         runOnUiThread {
+            // Если устройство не на голове — показываем нули и сообщение
+            if (!deviceOnHead) {
+                artifactsInfoView?.text = "Устройство не надето на голову"
+                waveTextView?.text = "Альфа: 0.0%\nБета: 0.0%\nТета: 0.0%"
+                engagementLevelView?.text = "⏳ Ожидание калибровки..."
+                return@runOnUiThread
+            }
+
             // Артефакты/сопротивление (не перезаписываем если показываем сопротивление)
             if (!isResistanceMode && artifactsInfoView?.text?.contains("контакт") != true) {
                 artifactsInfoView?.text = if (isArtifacted) {
@@ -956,17 +1084,17 @@ class LiveMonitoringActivity : AppCompatActivity() {
                 }
             }
 
-            // Спектральные данные
+            // Спектральные данные (Альфа/Бета как в Python)
             waveTextView?.text = buildString {
                 append("Альфа: ${"%.1f".format(alphaPercent)}%\n")
                 append("Бета: ${"%.1f".format(betaPercent)}%\n")
-                append("Индекс: ${"%.1f".format(thetaPercent)}%")
+                append("Тета: ${"%.1f".format(thetaPercent)}%")
             }
 
-            // Внимание/калибровка
+            // Внимание и Релаксация (как в Python: R_Attention, R_Relaxation)
             engagementLevelView?.text = when {
                 calibrationPercent in 1..99 -> "🔄 Калибровка: $calibrationPercent%"
-                calibrationComplete -> "Внимание: ${"%.1f".format(attentionPercent)}%"
+                calibrationComplete -> "Внимание: ${"%.1f".format(attentionPercent)}% • Релаксация: ${"%.1f".format(relaxationPercent)}%"
                 else -> "⏳ Ожидание калибровки..."
             }
         }
@@ -1037,16 +1165,67 @@ class LiveMonitoringActivity : AppCompatActivity() {
     // region UI Actions
 
     private fun navigateToAnalysis() {
+        try {
+            finalizeSession() // гарантируем сохранение перед переходом
+            stopBrainBitMonitoring()
+            stopFakeMetrics()
+            releasePlayer()
+        } catch (_: Exception) {
+            // игнорируем, переходим дальше
+        }
         startActivity(Intent(this, SessionAnalysisActivity::class.java))
         finish()
     }
 
+    private fun ensureSessionCreated() {
+        if (SessionStorage.getSession(this, currentSessionId) == null) {
+            val record = SessionRecord(
+                id = currentSessionId,
+                name = currentSessionName ?: "Сессия",
+                source = currentSessionSource ?: "n/a",
+                uri = currentSessionUri,
+                youtube = currentSessionYoutube,
+                tags = currentSessionTags,
+                startTime = System.currentTimeMillis(),
+                autoSave = currentSessionAutoSave,
+                fakeMetrics = currentSessionFake,
+                deviceName = currentDeviceName,
+                deviceAddress = currentDeviceAddress
+            )
+            SessionStorage.createSession(this, record)
+        }
+    }
+
     private fun addSessionMark() {
-        engagementLevelView?.text = "Добавлена метка"
-        Toast.makeText(this, "Метка добавлена", Toast.LENGTH_SHORT).show()
+        ensureSessionCreated()
+        val event = SessionEvent(
+            type = SessionEventType.MARK,
+            timestamp = System.currentTimeMillis(),
+            label = "Метка",
+            attention = smoothedAttention,
+            relaxation = smoothedRelaxation,
+            alpha = smoothedAlpha * 100,
+            beta = smoothedBeta * 100,
+            theta = smoothedTheta * 100
+        )
+        SessionStorage.addEvent(this, currentSessionId, event)
+        engagementLevelView?.text = "Метка добавлена"
+        Toast.makeText(this, "Метка сохранена", Toast.LENGTH_SHORT).show()
     }
 
     private fun saveSnapshot() {
+        ensureSessionCreated()
+        val event = SessionEvent(
+            type = SessionEventType.SNAPSHOT,
+            timestamp = System.currentTimeMillis(),
+            label = "Снимок",
+            attention = smoothedAttention,
+            relaxation = smoothedRelaxation,
+            alpha = smoothedAlpha * 100,
+            beta = smoothedBeta * 100,
+            theta = smoothedTheta * 100
+        )
+        SessionStorage.addEvent(this, currentSessionId, event)
         engagementLevelView?.text = "Снимок сохранён"
         Toast.makeText(this, "Снимок сохранён", Toast.LENGTH_SHORT).show()
     }
@@ -1063,6 +1242,7 @@ class LiveMonitoringActivity : AppCompatActivity() {
         }
 
         try {
+            // SDK использует "Callibration" с двойной 'l'
             emotionalMath?.startCalibration()
             calibrationComplete = false
             engagementLevelView?.text = "🔄 Калибровка: 0%"
@@ -1071,6 +1251,37 @@ class LiveMonitoringActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to start calibration: ${e.message}", e)
             Toast.makeText(this, "Ошибка запуска калибровки: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun finalizeSession() {
+        val existing = SessionStorage.getSession(this, currentSessionId) ?: return
+        val endTs = System.currentTimeMillis()
+        val durationMs = endTs - existing.startTime
+        val avgAtt = if (statSamples > 0) statSumAttention / statSamples else null
+        val avgRel = if (statSamples > 0) statSumRelaxation / statSamples else null
+        val updated = existing.copy(
+            endTime = endTs,
+            lastAttention = smoothedAttention,
+            lastRelaxation = smoothedRelaxation,
+            durationMs = durationMs,
+            avgAttention = avgAtt,
+            avgRelaxation = avgRel,
+            maxAttention = if (statMaxAttention > 0) statMaxAttention else null,
+            maxAttentionTs = statMaxAttentionTs,
+            maxRelaxation = if (statMaxRelaxation > 0) statMaxRelaxation else null,
+            maxRelaxationTs = statMaxRelaxationTs,
+            minAttention = if (statMinAttention != Double.MAX_VALUE) statMinAttention else null,
+            minAttentionTs = statMinAttentionTs
+        )
+        SessionStorage.updateSession(this, updated)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        finalizeSession()
+        releasePlayer()
+        stopBrainBitMonitoring()
+        stopFakeMetrics()
     }
 
     private suspend fun showError(message: String) {
